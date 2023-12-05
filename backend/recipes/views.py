@@ -5,22 +5,16 @@ import django_filters
 from django.http import HttpResponse
 from django_filters import filters
 from django_filters.rest_framework import DjangoFilterBackend
+from recipes.models import Favorite, Ingredient, Purchase, Recipe, Tag
+from recipes.permissions import OnlyOwnerPermission, RecipeActionPermission
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-
-from recipes.models import Tag, Recipe, Ingredient, Purchase, Favorite
-from recipes.permissions import RecipeActionPermission, OnlyOwnerPermission
-from serializers import (
-    TagSerializer,
-    RecipeSerializer,
-    CreateUpdateRecipeSerializer,
-    AddRecipeSerializer,
-    IngredientSerializer
-)
+from serializers import (AddRecipeSerializer, CreateUpdateRecipeSerializer,
+                         IngredientSerializer, RecipeSerializer, TagSerializer)
 
 
 class TagViewSet(ModelViewSet):

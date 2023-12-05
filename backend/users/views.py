@@ -8,12 +8,8 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-
-from serializers import (
-    UserSerializer,
-    UserCreateSerializer,
-    SubscriptionSerializer
-)
+from serializers import (SubscriptionSerializer, UserCreateSerializer,
+                         UserSerializer)
 
 User = get_user_model()
 
@@ -64,16 +60,15 @@ class UserViewSet(ModelViewSet):
     )
     def subscribe(self, request, pk):
         candidate_user = get_object_or_404(User, pk=pk)
-        if (
-                request.user == candidate_user
-                or candidate_user in request.user.subscriptions.all()
-        ):
-            return Response(
-                data={"errors": "Действие запрещено(повторная подписка "
-                                "или подписка на самого себя)"},
-                status=status.HTTP_400_BAD_REQUEST)
-
         if request.method == 'POST':
+            if (
+                    request.user == candidate_user
+                    or candidate_user in request.user.subscriptions.all()
+            ):
+                return Response(
+                    data={"errors": "Действие запрещено(повторная подписка "
+                                    "или подписка на самого себя)"},
+                    status=status.HTTP_400_BAD_REQUEST)
             request.user.subscriptions.add(candidate_user)
             serializer = SubscriptionSerializer(
                 candidate_user, context={'request': request}

@@ -1,8 +1,6 @@
+from django.urls import include, path
 from djoser.views import UserViewSet as BaseUserViewSet
-
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
 from users.views import UserViewSet
 
 router = DefaultRouter()

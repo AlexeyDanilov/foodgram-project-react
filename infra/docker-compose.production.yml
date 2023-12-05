@@ -13,7 +13,7 @@ services:
       - pg_data:/var/lib/postgresql/data
     env_file: ../.env
   backend:
-    build: ../backend/
+    image: alexeydanilov78/backend_foodgram
     env_file: ../.env
     volumes:
       - static:/backend_static
@@ -22,9 +22,7 @@ services:
       - db
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: alexeydanilov78/frontend_foodgram
     command: cp -r /app/build/. /static/
     volumes:
       - ../frontend/:/app/result_build/
@@ -33,13 +31,12 @@ services:
     image: nginx:1.19.3
     env_file: ../.env
     ports:
-      - "80:80"
+      - "8001:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
       - static:/staticfiles/
       - media:/media/
     depends_on:
       - backend
-
