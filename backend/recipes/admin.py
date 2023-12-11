@@ -1,3 +1,4 @@
+from colorfield.fields import ColorField
 from django.contrib import admin
 from recipes.models import Ingredient, Recipe, Tag
 
@@ -16,6 +17,9 @@ class RecipeAdmin(admin.ModelAdmin):
         'count_of_additions',
     )
 
+    def count_of_additions(self, obj):
+        return obj.favorite_set.count()
+
 
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ('name', 'measurement_unit',)
@@ -24,6 +28,9 @@ class IngredientAdmin(admin.ModelAdmin):
 
 class TagAdmin(admin.ModelAdmin):
     list_display = ('name',)
+    formfield_overrides = {
+        ColorField: {'widget': admin.widgets.AdminTextInputWidget},
+    }
 
 
 admin.site.register(Recipe, RecipeAdmin)

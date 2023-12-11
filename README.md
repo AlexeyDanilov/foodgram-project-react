@@ -27,4 +27,5 @@
 
 
 Проект доступен по адресу: [product-helper.hopto.org](https://product-helper.hopto.org/)
+Спецификация проекта: [product-helper.hopto.org/api/docs](https://product-helper.hopto.org/api/docs/)
 

@@ -1,9 +1,10 @@
 from django.contrib import admin
-from django.contrib.admin import ModelAdmin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Group
 
 
-class UserAdmin(ModelAdmin):
+class UserAdmin(UserAdmin):
     list_display = (
         'id',
         'username',
@@ -17,3 +18,4 @@ class UserAdmin(ModelAdmin):
 
 
 admin.site.register(get_user_model(), UserAdmin)
+admin.site.unregister(Group)
