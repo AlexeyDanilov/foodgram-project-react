@@ -5,9 +5,9 @@ import django_filters
 from django import forms
 from django.db.models import Sum
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django_filters import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from paginations import PageNumberLimitPagination
 from recipes.models import (Favorite, Ingredient, Purchase, Recipe,
                             RecipeIngredient, Tag)
 from recipes.permissions import AuthAuthorOrReadOnly, OnlyOwnerPermission
@@ -20,6 +20,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from users.paginations import PageNumberLimitPagination
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -46,13 +47,13 @@ class RecipeFilter(django_filters.FilterSet):
         fields = ['is_favorited', 'is_in_shopping_cart', 'tags', 'author']
 
     def filter_is_favorited(self, queryset, name, value):
-        if value == '1':
+        if self.request.user.is_authenticated and value == '1':
             return queryset.filter(favorites__user=self.request.user)
 
         return queryset
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
-        if value == '1':
+        if self.request.user.is_authenticated and value == '1':
             return queryset.filter(purchases__user=self.request.user)
 
         return queryset
@@ -156,7 +157,7 @@ class RecipeViewSet(ModelViewSet):
             recipe_count, _ = self.preference_remover(Favorite, pk, request)
             if not recipe_count:
                 return Response(
-                    data={'errors': 'Рецепт не найден в избранных'},
+                    data={'errors': 'Рецепт не найден в избранном'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -172,6 +173,7 @@ class RecipeViewSet(ModelViewSet):
         return serializer_class(instance)
 
     def preference_remover(self, model, pk, request):
+        get_object_or_404(model, recipe_id=pk)
         recipe_count = model.objects.filter(
             user=request.user,
             recipe_id=pk

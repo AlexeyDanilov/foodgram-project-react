@@ -1,15 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet as UVS
-from paginations import PageNumberLimitPagination
 from recipes.serializers import (SubscriptionRelatedSerializer,
                                  SubscriptionSerializer)
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from users.models import Subscription
+from users.paginations import PageNumberLimitPagination
 from users.serializers import UserSerializer
 
 User = get_user_model()
@@ -32,7 +31,7 @@ class UserViewSet(UVS):
         return super().get_serializer_class()
 
     def get_permissions(self):
-        if self.action == 'me':
+        if self.action in ('me', 'subscriptions', 'subscribe',):
             return [IsAuthenticated(), ]
 
         return [AllowAny(), ]
@@ -40,10 +39,9 @@ class UserViewSet(UVS):
     @action(
         methods=['get'],
         detail=False,
-        pagination_class=PageNumberLimitPagination
     )
     def subscriptions(self, request):
-        paginator = LimitOffsetPagination()
+        paginator = PageNumberLimitPagination()
         subscriptions = Subscription.objects.filter(subscriber=request.user)
         subscribed_to_users = [
             subscription.subscribed_to for subscription in subscriptions
@@ -62,7 +60,7 @@ class UserViewSet(UVS):
         detail=True,
         url_path='subscribe',
         url_name='subscribe',
-        lookup_url_kwarg='pk'
+        lookup_url_kwarg='pk',
     )
     def subscribe(self, request, pk):
         get_object_or_404(User, pk=pk)
@@ -86,6 +84,9 @@ class UserViewSet(UVS):
             subscribed_to=pk
         ).delete()
         if not subscription_count:
-            return Response(data={'errors': 'Ошибка отписки'})
+            return Response(
+                data={'errors': 'Ошибка отписки'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)

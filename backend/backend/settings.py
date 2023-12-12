@@ -66,6 +66,7 @@ DJOSER = {
         'current_user': 'users.serializers.UserSerializer',
         'token_create': 'djoser.serializers.TokenCreateSerializer',
         'user_create': 'djoser.serializers.UserCreateSerializer',
+        'set_password': 'djoser.serializers.SetPasswordSerializer',
     },
     'PERMISSIONS': {
         'user': 'rest_framework.permissions.AllowAny',

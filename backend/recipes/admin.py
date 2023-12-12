@@ -17,8 +17,11 @@ class RecipeAdmin(admin.ModelAdmin):
         'count_of_additions',
     )
 
+    @admin.display(
+        description='Число добавлений в избранное'
+    )
     def count_of_additions(self, obj):
-        return obj.favorite_set.count()
+        return obj.favorites.count()
 
 
 class IngredientAdmin(admin.ModelAdmin):

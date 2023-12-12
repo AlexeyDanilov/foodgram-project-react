@@ -124,18 +124,18 @@ class RecipeSerializer(serializers.ModelSerializer):
         )
 
     def get_is_favorited(self, obj):
-        return (
+        return bool(
             self.context.get('request')
-            and self.context.get('request').user
+            and self.context.get('request').user.is_authenticated
             and Favorite.objects.filter(
                 user=self.context.get('request').user,
                 recipe=obj).exists()
         )
 
     def get_is_in_shopping_cart(self, obj):
-        return (
+        return bool(
             self.context.get('request')
-            and self.context.get('request').user
+            and self.context.get('request').user.is_authenticated
             and Purchase.objects.filter(
                 user=self.context.get('request').user,
                 recipe=obj).exists()
@@ -166,7 +166,6 @@ class CreateUpdateRecipeSerializer(serializers.ModelSerializer):
         source='recipeingredient_set', many=True
     )
     tags = PrimaryKeyRelatedField(many=True, queryset=Tag.objects.all())
-
     image = Base64ImageField()
 
     class Meta:
@@ -180,6 +179,37 @@ class CreateUpdateRecipeSerializer(serializers.ModelSerializer):
             'text',
             'cooking_time',
         )
+
+    def validate(self, attrs):
+        ingredients = attrs.get('recipeingredient_set')
+        tags = attrs.get('tags')
+        if not ingredients:
+            raise serializers.ValidationError(
+                'Список ингредиентов не может быть пустым'
+            )
+
+        if not tags:
+            raise serializers.ValidationError(
+                'Список тэгов не может быть пустым'
+            )
+
+        self.check_duplicates(ingredients, 'ингредиенты')
+        self.check_duplicates(tags, 'тэги')
+
+        return attrs
+
+    def check_duplicates(self, data, key_word):
+        if not len(data) > 1:
+            return data
+
+        check_list = list()
+        for item in data:
+            if item in check_list:
+                raise serializers.ValidationError(
+                    f'Нельзя дублировать {key_word}'
+                )
+
+            check_list.append(item)
 
     @transaction.atomic
     def create(self, validated_data):
