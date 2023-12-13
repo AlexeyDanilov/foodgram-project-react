@@ -1,5 +1,6 @@
 from colorfield.fields import ColorField
 from django.contrib import admin
+
 from recipes.models import Ingredient, Recipe, Tag
 
 

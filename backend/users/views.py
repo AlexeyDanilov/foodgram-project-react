@@ -1,15 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet as UVS
-from recipes.serializers import (SubscriptionRelatedSerializer,
-                                 SubscriptionSerializer)
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+
 from users.models import Subscription
 from users.paginations import PageNumberLimitPagination
-from users.serializers import UserSerializer
+from users.serializers import (SubscriptionRelatedSerializer,
+                               SubscriptionSerializer, UserSerializer)
 
 User = get_user_model()
 
@@ -32,9 +32,9 @@ class UserViewSet(UVS):
 
     def get_permissions(self):
         if self.action in ('me', 'subscriptions', 'subscribe',):
-            return [IsAuthenticated(), ]
+            return IsAuthenticated(),
 
-        return [AllowAny(), ]
+        return AllowAny(),  # super() не сработает
 
     @action(
         methods=['get'],
@@ -70,14 +70,15 @@ class UserViewSet(UVS):
                 'subscribed_to': pk
             }
             serializer = SubscriptionRelatedSerializer(
-                data=data
+                data=data,
+                context={'request': request}
             )
             serializer.is_valid(raise_exception=True)
-            instance = serializer.save()
-            result = SubscriptionRelatedSerializer(
-                instance, context={'request': request}
+            serializer.save()
+            return Response(
+                data=serializer.data,
+                status=status.HTTP_201_CREATED
             )
-            return Response(data=result.data, status=status.HTTP_201_CREATED)
 
         subscription_count, _ = Subscription.objects.filter(
             subscriber=request.user.id,

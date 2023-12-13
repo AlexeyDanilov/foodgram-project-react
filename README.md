@@ -27,5 +27,16 @@
 
 
 Проект доступен по адресу: [product-helper.hopto.org](https://product-helper.hopto.org/)
-Спецификация проекта: [product-helper.hopto.org/api/docs](https://product-helper.hopto.org/api/docs/)
+
+#### Как развернуть проект:
+1. Клонировать репозиторий: [github.com/AlexeyDanilov/foodgram-project-react](https://github.com/AlexeyDanilov/foodgram-project-react)
+2. Установить `docker` и `docker-compose`.
+3. Создать файл `.env` в папке `infra`. Образец заполнения `/infra/.env.example`.
+4. Выполнить команду `docker-compose up -d --buld`.
+5. Запустить миграции `docker-compose exec backend python manage.py migrate`.
+6. Создать суперпользователя `docker-compose exec backend python manage.py createsuperuser`.
+7. Собрать статику `docker-compose exec backend python manage.py collectstatic --no-input`.
+8. Заполнить базу ингредиентами `docker-compose exec backend python manage.py load_ingredients`.
+9. Спецификация к API проекта: [product-helper.hopto.org/api/docs](https://product-helper.hopto.org/api/docs/)
+
 

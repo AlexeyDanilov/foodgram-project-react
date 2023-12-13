@@ -15,18 +15,18 @@ class User(AbstractUser):
         max_length=MAX_VALUE,
         unique=True,
         help_text=(
-            "Required. 20 characters or fewer. Letters, "
-            "digits and @/./+/-/_ only."
+            'Required. 20 characters or fewer. Letters, '
+            'digits and @/./+/-/_ only.'
         ),
         validators=[
             username_validator,
         ],
         error_messages={
-            "unique": "A user with that username already exists.",
+            'unique': 'A user with that username already exists.',
         },
     )
     first_name = models.CharField(
-        "first name",
+        'first name',
         max_length=MAX_VALUE,
     )
     last_name = models.CharField(
@@ -34,7 +34,7 @@ class User(AbstractUser):
         max_length=MAX_VALUE,
     )
     email = models.EmailField(
-        "email address", unique=True
+        'email address', unique=True
     )
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'password']

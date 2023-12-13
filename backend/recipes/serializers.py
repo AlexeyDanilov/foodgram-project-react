@@ -3,11 +3,11 @@ import base64
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.db import transaction
-from recipes.models import (Favorite, Ingredient, Purchase, Recipe,
-                            RecipeIngredient, Tag)
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from users.models import Subscription
+
+from recipes.models import (Favorite, Ingredient, Purchase, Recipe,
+                            RecipeIngredient, Tag)
 from users.serializers import UserSerializer
 
 User = get_user_model()
@@ -17,62 +17,6 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time',)
-
-
-class SubscriptionSerializer(UserSerializer):
-    recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
-
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
-
-    class Meta:
-        model = User
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-            'recipes',
-            'recipes_count'
-        )
-
-    def get_recipes(self, user):
-        request = self.context.get('request')
-        recipes_limit = request.GET.get('recipes_limit')
-        recipes = (user.recipes.all()[:int(recipes_limit)]
-                   if recipes_limit else user.recipes.all())
-        return ShortRecipeSerializer(recipes, many=True).data
-
-
-class SubscriptionRelatedSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Subscription
-        fields = ('subscriber', 'subscribed_to',)
-
-    def validate(self, attrs):
-        if attrs.get('subscriber') == attrs.get('subscribed_to'):
-            raise serializers.ValidationError(
-                'Нельзя подписаться на самого себя'
-            )
-
-        subscription = Subscription.objects.filter(
-            subscriber_id=attrs.get('subscriber'),
-            subscribed_to_id=attrs.get('subscribed_to')
-        )
-        if subscription.exists():
-            raise serializers.ValidationError(
-                'Вы уже подписаны на данного пользователя'
-            )
-
-        return attrs
-
-    def to_representation(self, instance):
-        return SubscriptionSerializer(
-            instance=instance.subscribed_to,
-            context=self.context).data
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -233,7 +177,6 @@ class CreateUpdateRecipeSerializer(serializers.ModelSerializer):
         instance.ingredients.clear()
         self.bind_ingresient_recipe(ingredients_data, instance)
 
-        instance.save()
         return super().update(instance, validated_data)
 
     def bind_ingresient_recipe(self, ingredients_data, recipe):
@@ -254,15 +197,13 @@ class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
         fields = ('user', 'recipe',)
-
-    def validate(self, attrs):
-        favorite_recipe = Favorite.objects.filter(
-            user=attrs.get('user'), recipe_id=attrs.get('recipe')
-        )
-        if favorite_recipe.exists():
-            raise serializers.ValidationError('Рецепт уже добавлен')
-
-        return attrs
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=('user', 'recipe'),
+                message='This recipe is already in favorites.'
+            )
+        ]
 
     def to_representation(self, instance):
         return ShortRecipeSerializer(instance=instance.recipe).data
@@ -272,15 +213,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = ('user', 'recipe',)
-
-    def validate(self, attrs):
-        purchase_recipe = Purchase.objects.filter(
-            user_id=attrs.get('user'), recipe_id=attrs.get('recipe')
-        )
-        if purchase_recipe.exists():
-            raise serializers.ValidationError('Рецепт уже добавлен')
-
-        return attrs
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Purchase.objects.all(),
+                fields=('user', 'recipe'),
+                message='This recipe is already in favorites.'
+            )
+        ]
 
     def to_representation(self, instance):
         return ShortRecipeSerializer(instance=instance.recipe).data

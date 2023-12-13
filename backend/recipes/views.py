@@ -2,24 +2,25 @@ import csv
 from io import StringIO
 
 import django_filters
-from django import forms
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from recipes.models import (Favorite, Ingredient, Purchase, Recipe,
-                            RecipeIngredient, Tag)
-from recipes.permissions import AuthAuthorOrReadOnly, OnlyOwnerPermission
-from recipes.serializers import (CreateUpdateRecipeSerializer,
-                                 FavoriteSerializer, IngredientSerializer,
-                                 PurchaseSerializer, RecipeSerializer,
-                                 TagSerializer)
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+
+from recipes.filters import RecipeFilter
+from recipes.models import (Favorite, Ingredient, Purchase, Recipe,
+                            RecipeIngredient, Tag)
+from recipes.permissions import AuthAuthorOrReadOnly
+from recipes.serializers import (CreateUpdateRecipeSerializer,
+                                 FavoriteSerializer, IngredientSerializer,
+                                 PurchaseSerializer, RecipeSerializer,
+                                 TagSerializer)
 from users.paginations import PageNumberLimitPagination
 
 
@@ -27,36 +28,6 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TagSerializer
     permission_classes = (AllowAny,)
     queryset = Tag.objects.all()
-    pagination_class = None
-
-
-class RecipeFilter(django_filters.FilterSet):
-    is_favorited = django_filters.CharFilter(method='filter_is_favorited')
-    is_in_shopping_cart = django_filters.CharFilter(
-        method='filter_is_in_shopping_cart'
-    )
-    tags = django_filters.ModelMultipleChoiceFilter(
-        field_name='tags__slug',
-        to_field_name='slug',
-        queryset=Tag.objects.all(),
-        widget=forms.CheckboxSelectMultiple
-    )
-
-    class Meta:
-        model = Recipe
-        fields = ['is_favorited', 'is_in_shopping_cart', 'tags', 'author']
-
-    def filter_is_favorited(self, queryset, name, value):
-        if self.request.user.is_authenticated and value == '1':
-            return queryset.filter(favorites__user=self.request.user)
-
-        return queryset
-
-    def filter_is_in_shopping_cart(self, queryset, name, value):
-        if self.request.user.is_authenticated and value == '1':
-            return queryset.filter(purchases__user=self.request.user)
-
-        return queryset
 
 
 class RecipeViewSet(ModelViewSet):
@@ -64,9 +35,9 @@ class RecipeViewSet(ModelViewSet):
     permission_classes = (AuthAuthorOrReadOnly,)
     pagination_class = PageNumberLimitPagination
     queryset = Recipe.objects.all()
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
-    http_method_names = ['get', 'post', 'patch', 'delete']
+    http_method_names = ('get', 'post', 'patch', 'delete',)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -74,11 +45,8 @@ class RecipeViewSet(ModelViewSet):
 
         return CreateUpdateRecipeSerializer
 
-    def perform_update(self, serializer):
-        serializer.save(author=self.request.user)
-
     @action(
-        permission_classes=(OnlyOwnerPermission,),
+        permission_classes=(IsAuthenticated,),
         methods=['GET'],
         detail=False
     )
@@ -123,6 +91,30 @@ class RecipeViewSet(ModelViewSet):
 
         return response
 
+    def preference_creator(self, serializer_class, pk, request):
+        data = {
+            'user': request.user.id,
+            'recipe': pk
+        }
+        serializer = serializer_class(data=data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        result = serializer_class(instance)
+        return Response(data=result.data, status=status.HTTP_201_CREATED)
+
+    def preference_remover(self, model, pk, request):
+        get_object_or_404(model, recipe_id=pk)
+        recipe_count = model.objects.filter(
+            user=request.user,
+            recipe_id=pk
+        ).delete()
+        if not recipe_count[0]:
+            return Response(
+                data={'errors': 'Объект не найден'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(
         methods=['POST', 'DELETE'],
         detail=True,
@@ -130,17 +122,8 @@ class RecipeViewSet(ModelViewSet):
         url_path='shopping_cart', lookup_url_kwarg='pk')
     def shopping_cart(self, request, pk):
         if request.method == 'POST':
-            result = self.preference_creator(PurchaseSerializer, pk, request)
-            return Response(data=result.data, status=status.HTTP_201_CREATED)
-
-        else:
-            recipe_count, _ = self.preference_remover(Purchase, pk, request)
-            if not recipe_count:
-                return Response(
-                    data={'errors': 'Рецепт не найден в списке покупок'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return self.preference_creator(PurchaseSerializer, pk, request)
+        return self.preference_remover(Purchase, pk, request)
 
     @action(
         methods=['POST', 'DELETE'],
@@ -150,35 +133,8 @@ class RecipeViewSet(ModelViewSet):
     )
     def favorite(self, request, pk):
         if request.method == 'POST':
-            result = self.preference_creator(FavoriteSerializer, pk, request)
-            return Response(data=result.data, status=status.HTTP_201_CREATED)
-
-        else:
-            recipe_count, _ = self.preference_remover(Favorite, pk, request)
-            if not recipe_count:
-                return Response(
-                    data={'errors': 'Рецепт не найден в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def preference_creator(self, serializer_class, pk, request):
-        data = {
-            'user': request.user.id,
-            'recipe': pk
-        }
-        serializer = serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-        return serializer_class(instance)
-
-    def preference_remover(self, model, pk, request):
-        get_object_or_404(model, recipe_id=pk)
-        recipe_count = model.objects.filter(
-            user=request.user,
-            recipe_id=pk
-        ).delete()
-        return recipe_count
+            return self.preference_creator(FavoriteSerializer, pk, request)
+        return self.preference_remover(Favorite, pk, request)
 
 
 class IngredientFilter(django_filters.FilterSet):
@@ -193,5 +149,5 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = IngredientSerializer
     queryset = Ingredient.objects.all()
     permission_classes = (AllowAny,)
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientFilter

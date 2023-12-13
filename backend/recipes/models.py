@@ -10,6 +10,8 @@ NAME_MAX_LENGTH = 200
 COLOR_MAX_LENGTH = 7
 SLUG_MAX_LENGTH = 200
 METRIC_MAX_LENGTH = 200
+COOKING_TIME_MIN = 1
+COOKING_TIME_MAX = 32767
 
 
 class Tag(models.Model):
@@ -87,8 +89,8 @@ class Recipe(models.Model):
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления (в минутах)',
         validators=[
-            MinValueValidator(limit_value=1),
-            MaxValueValidator(limit_value=32767)
+            MinValueValidator(limit_value=COOKING_TIME_MIN),
+            MaxValueValidator(limit_value=COOKING_TIME_MAX)
         ]
     )
     created_at = models.DateTimeField(
