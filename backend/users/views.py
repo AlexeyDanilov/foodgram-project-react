@@ -32,9 +32,9 @@ class UserViewSet(UVS):
 
     def get_permissions(self):
         if self.action in ('me', 'subscriptions', 'subscribe',):
-            return IsAuthenticated(),
+            return (IsAuthenticated(),)
 
-        return AllowAny(),  # super() не сработает
+        return super().get_permissions()
 
     @action(
         methods=['get'],
